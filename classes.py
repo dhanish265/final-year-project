@@ -7,7 +7,8 @@ class Anchorage:
         # Assume valid input of vertices such that origin (0,0) lies inside polygon (completely inside, not on edge, not any of the vertices)
         self.vertices = vertices
         self.edges = create_edges(vertices)
-        print(self.edges)
+        self.anchored = []
+        # print(self.edges)
     
     def isVesselInside(self, vessel):
         x, y = vessel.centre
@@ -23,6 +24,9 @@ class Anchorage:
             if dist < vessel.radius:
                 return False
         return True
+    
+    def generateCornerPoints(self, vessel):
+        pass
         
 
 class Vessel:
@@ -33,11 +37,21 @@ class Vessel:
         self.centre = centre
         self.radius = self.length + EXTRA_LENGTH
     
-    def checkCollision(self, vessel):
-        pass
+    def collidesWith(self, vessel): # tangent circles are not considered colliding.
+        x1, y1 = self.centre
+        x2, y2 = vessel.centre
+        r1, r2 = self.radius, vessel.radius
+        dist = math.sqrt((x1-x2) ** 2 + (y1-y2)**2)
+        # print(dist, r1+r2)
+        if dist >= r1 + r2:
+            return False
+        else: return True
+
         
 vertices = [(12, -9), (-12, -9), (-12, 20)]
 anc = Anchorage(vertices)
-vessel = Vessel(1, 1, 1, (-2.5, 7.5))
-print(anc.isVesselInside(vessel))
+vessel = Vessel(2, 1, 1, (-2.5, 7.5))
+vessel2 = Vessel(0.5, 1, 1, (1.5, 7))
+# print(anc.isVesselInside(vessel))
+# print(vessel.collidesWith(vessel2))
             
