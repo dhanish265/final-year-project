@@ -25,3 +25,25 @@ def create_edges(vertices):
             edges.append([a, b, c])
         else: edges.append([-a, -b, -c])
         return edges
+    
+def checkVesselInside(edges, x, y, radius):
+    for edge in edges:
+        a, b, c = edge
+        # check if centre of circle is inside boundary
+        if a*x + b*y >= c:
+            return False
+        # check if circle intersects edge twice
+        # if perp. dist between edge and circle is smaller than radius, means the edge is too close to the centre of the circle
+        dist = abs(a*x + b*y - c)/math.sqrt(a**2 + b**2)
+        # print(dist)
+        if dist < radius:
+            return False
+    return True
+
+def checkCircleCollision(x1, x2, y1, y2, r1, r2):
+    # print(x1, x2, y1, y2, r1, r2)
+    dist = math.sqrt((x1-x2) ** 2 + (y1-y2)**2)
+    # print(dist, r1+r2)
+    if dist >= r1 + r2:
+        return False
+    else: return True
