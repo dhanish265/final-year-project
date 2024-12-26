@@ -20,40 +20,58 @@ class Anchorage:
         return checkVesselInside(self.edges, x, y, vessel.radius)
     
     def generateCornerPoints(self, vessel): #vessel is vessel to be placed
+        radius = vessel.radius
         cornerPoints = []
         for i in range(len(self.edges)):
             edge = self.edges[i]
-            self.generateSideandSideCP(vessel, cornerPoints, i, edge)
-            self.generateSideandCircleCP(vessel, cornerPoints, edge)
-            
+            self.generateSideandSideCP(radius, cornerPoints, i, edge)
+            self.generateSideandCircleCP(radius, cornerPoints, edge)
+        self.generateCircleandCircleCP(radius, cornerPoints)
         return cornerPoints
 
-    def generateSideandCircleCP(self, vessel, cornerPoints, edge):
-        a, b = edge[0], edge[1] 
+    def generateCircleandCircleCP(self, radius, cornerPoints):
+        for i in range(len(self.anchored)):
+            vessel2 = self.anchored[i]
+            for j in range(i+1, len(self.anchored)):
+                vessel3 = self.anchored[j]
+                x2, y2 = vessel2.centre
+                x3, y3 = vessel3.centre
+                r2, r3 = vessel2.radius + radius, vessel3.radius + radius
+                a, b = 2*(x3-x2), 2 *(y3-y2)
+                c = r2**2 - r3**2 - x2**2 + x3**2 - y2**2 + y3**2
+                res = findIntersectionsLineCircle(x2, y2, r2, a, b, c)
+                # print(res)
+                self.checkAndAddCP(cornerPoints, res, radius)
+
+    def generateSideandCircleCP(self, radius, cornerPoints, edge):
+        a, b = edge[0], edge[1]
         for j in range(len(self.anchored)):
             vessel2 = self.anchored[j]
             # print(vessel2.centre, vessel2.radius)
-            c = edge[-1] - (math.sqrt(edge[0] * edge[0] + edge[1] * edge[1]) * vessel.radius)
+            c = edge[-1] - (math.sqrt(edge[0] * edge[0] + edge[1] * edge[1]) * radius)
             x, y = vessel2.centre
-            r = vessel2.radius + vessel.radius
+            r = vessel2.radius + radius
             # print(x, y, r, a, b, c)
             res = findIntersectionsLineCircle(x, y, r, a, b, c)
             # print(res)
-            for x1, y1, in res:
-                satisfied = True
-                if not checkVesselInside(self.edges, x1, y1, vessel.radius):
-                    satisfied = False
-                if not satisfied:
-                    continue
-                for ship in self.anchored:
-                    x2, y2 = ship.centre
-                    if checkCircleCollision(x1, x2, y1, y2, vessel.radius, ship.radius):
-                        satisfied = False
-                        break
-                if satisfied:
-                    cornerPoints.append((x1, y1))
+            self.checkAndAddCP(cornerPoints, res, radius)
 
-    def generateSideandSideCP(self, vessel, cornerPoints, i, edge):
+    def checkAndAddCP(self, cornerPoints, res, radius):
+        for x1, y1, in res:
+            satisfied = True
+            if not checkVesselInside(self.edges, x1, y1, radius):
+                satisfied = False
+            if not satisfied:
+                continue
+            for ship in self.anchored:
+                x2, y2 = ship.centre
+                if checkCircleCollision(x1, x2, y1, y2, radius, ship.radius):
+                    satisfied = False
+                    break
+            if satisfied:
+                cornerPoints.append((x1, y1))
+
+    def generateSideandSideCP(self, radius, cornerPoints, i, edge):
         for j in range(i+1, len(self.edges)):
             edge2 = self.edges[j]
             if edge[0] == edge2[0] == 0:
@@ -66,8 +84,8 @@ class Anchorage:
             Y = [edge[-1], edge2[-1]]
             value1 = math.sqrt(edge[0] * edge[0] + edge[1] * edge[1])
             value2 = math.sqrt(edge2[0] * edge2[0] + edge2[1] * edge2[1])
-            Y[0] -= abs(vessel.radius * value1)
-            Y[1] -= abs(vessel.radius * value2)
+            Y[0] -= abs(radius * value1)
+            Y[1] -= abs(radius * value2)
             # print(A, Y)
             res = tuple(np.linalg.inv(A).dot(Y))
             res = (res[0].item(), res[1].item())
@@ -76,7 +94,7 @@ class Anchorage:
             for vessel2 in self.anchored:
                 x, y = vessel2.centre
                     # print(x, y)
-                if checkCircleCollision(res[0], x, res[1], y, vessel.radius, vessel2.radius):
+                if checkCircleCollision(res[0], x, res[1], y, radius, vessel2.radius):
                     collision = True
                     break
             if not collision:
@@ -102,7 +120,7 @@ class Vessel:
         
 vertices = [(12, -9), (-12, -9), (-12, 20)]
 anc = Anchorage(vertices)
-vessel = Vessel(3, (-9, 0.10102051443364424))
+vessel = Vessel(3)
 vessel2 = Vessel(2, (-10.0, 14.446411629213546))
 anc.anchored.append(vessel2)
 anc.anchored.append(Vessel(2, (-10, 5)))
@@ -113,8 +131,8 @@ anc.anchored.append(Vessel(2, (-10, 5)))
 #     x1, y1 = ship.centre
 #     print(x1, y1, ship.radius)
 #     print(checkCircleCollision(x1, -7.64696316941158, y1, 10.034697940192649, ship.radius, 3))
-# cp = anc.generateCornerPoints(vessel)
-# print(cp)
-print(anc.isVesselInside(vessel))
-print(vessel.collidesWith(Vessel(2, (-10, 5))))
+cp = anc.generateCornerPoints(vessel)
+print(cp)
+# print(anc.isVesselInside(vessel))
+# print(vessel.collidesWith(Vessel(2, (-10, 5))))
             

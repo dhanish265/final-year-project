@@ -64,7 +64,7 @@ def findIntersectionsLineCircle(x, y, r, a, b, c):
     M = 2* (a/b*(y-c/b) -x)
     N = c*c/(b*b) + x*x + y*y - r*r - 2*c*y/b
     disc = M*M - 4*N*L
-
+    # print(x, y, r, a, b, c)
     # print(L, M, N, disc)
     if abs(disc) < EPSILON:
         x1 = -M/2
