@@ -5,6 +5,16 @@ DEPTH = 35
 EXTRA_LENGTH = 0
 EPSILON = 10 ** (-6)
 
+def calculateArea(vertices):
+    vertices.append(vertices[0])
+    area = 0
+    for i in range(len(vertices) - 1):
+        area += (vertices[i][0] * vertices[i+1][1] - vertices[i][1] * vertices[i+1][0])
+        # print(area)
+    del vertices[-1]
+    return abs(area)/2
+    
+
 def create_edges(vertices):
     # each edge is encoded as [a, b, c]
     # ax + by <= c
@@ -25,7 +35,8 @@ def create_edges(vertices):
         if c > 0:
             edges.append([a, b, c])
         else: edges.append([-a, -b, -c])
-        return edges
+    del vertices[-1]
+    return edges
     
 def checkVesselInside(edges, x, y, radius):
     for edge in edges:

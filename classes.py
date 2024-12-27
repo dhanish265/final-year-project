@@ -11,6 +11,8 @@ class Anchorage:
         self.vertices = vertices
         self.edges = create_edges(vertices)
         self.anchored = []
+        self.area = calculateArea(vertices)
+        # print(self.area)
         # print(self.edges)
     
     def isVesselInside(self, vessel):
