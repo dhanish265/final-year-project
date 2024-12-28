@@ -4,6 +4,8 @@ DEPTH = 35
 # EXTRA_LENGTH = math.sqrt((25*math.sqrt(DEPTH)) ** 2 - DEPTH**2)
 EXTRA_LENGTH = 0
 EPSILON = 10 ** (-6)
+MIN_IDEAL_DIST = 445
+MAX_IDEAL_DIST = 2055 #2500 - 445
 
 def calculateArea(vertices):
     vertices.append(vertices[0])
