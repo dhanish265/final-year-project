@@ -120,12 +120,12 @@ class Vessel:
         return checkCircleCollision(x1, x2, y1, y2, r1, r2)
 
         
-vertices = [(12, -9), (-12, -9), (-12, 20)]
-anc = Anchorage(vertices)
-vessel = Vessel(3)
-vessel2 = Vessel(2, (-10.0, 14.446411629213546))
-anc.anchored.append(vessel2)
-anc.anchored.append(Vessel(2, (-10, 5)))
+# vertices = [(12, -9), (-12, -9), (-12, 20)]
+# anc = Anchorage(vertices)
+# vessel = Vessel(3)
+# vessel2 = Vessel(2, (-10.0, 14.446411629213546))
+# anc.anchored.append(vessel2)
+# anc.anchored.append(Vessel(2, (-10, 5)))
 
 
 # print(checkVesselInside(anc.edges, -7.64696316941158, 10.034697940192649, 3))
@@ -133,8 +133,8 @@ anc.anchored.append(Vessel(2, (-10, 5)))
 #     x1, y1 = ship.centre
 #     print(x1, y1, ship.radius)
 #     print(checkCircleCollision(x1, -7.64696316941158, y1, 10.034697940192649, ship.radius, 3))
-cp = anc.generateCornerPoints(vessel)
-print(cp)
+# cp = anc.generateCornerPoints(vessel)
+# print(cp)
 # print(anc.isVesselInside(vessel))
 # print(vessel.collidesWith(Vessel(2, (-10, 5))))
             

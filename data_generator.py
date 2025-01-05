@@ -7,7 +7,7 @@ import bisect
 from utils import MIN_IDEAL_DIST, MAX_IDEAL_DIST
 
 LIMIT = 14 * 24 * 60
-times = [None] * 3 #normal, idle, busy
+dwell_times = [None] * 3 #normal, idle, busy
 boundaries = [None] * 3
 dwell_time_raw_data = None
 # print(times)
@@ -27,11 +27,12 @@ def generateData(busy_rate = 1, name = 'Synthetic Anchorage (normal)'):
 
     
 def read_data(name):
-    if not os.path.isfile("data/" + name):
+    print("data/" + name + ".xlsx")
+    if not os.path.isfile("data/" + name + ".xlsx"):
         print("Incorrect file name! Please check!")
         return None
     data = {}
-    workbook = load_workbook("data/" + name)
+    workbook = load_workbook("data/" + name + ".xlsx")
     sheetNames = workbook.sheetnames
     for sheetName in sheetNames:
         values = []
@@ -41,9 +42,9 @@ def read_data(name):
         data[sheetName] = values
     return data
 
-data = read_data('Ahirkapi Anchorage.xlsx')
-if data is not None:
-    print(data['100'])
+# data = read_data('Ahirkapi Anchorage.xlsx')
+# if data is not None:
+#     print(data['100'])
 # generateData(busy_rate= 0.5, name = 'Synthetic Anchorage (idle)')
 
 def dwell_time_dist_analysis(rewrite = False, busy_rate = 1, sheet_name = 'normal'):
@@ -51,7 +52,7 @@ def dwell_time_dist_analysis(rewrite = False, busy_rate = 1, sheet_name = 'norma
     value = []
     if not rewrite:
         if dwell_time_raw_data is None:
-            dwell_time_raw_data = read_data('dwell_time_analysis.xlsx')
+            dwell_time_raw_data = read_data('dwell_time_analysis')
         for row in dwell_time_raw_data[sheet_name]:
             value.append(row[-1])
         return value
@@ -69,7 +70,7 @@ def dwell_time_dist_analysis(rewrite = False, busy_rate = 1, sheet_name = 'norma
         average = sum(data[j])/len(data[j])
         data[j].append(average)
         value.append(average)
-    write_to_xlsx([data], 'dwell_time_analysis.xlsx', [sheet_name]) 
+    write_to_xlsx([data], 'dwell_time_analysis', [sheet_name]) 
     return value
 
 def write_to_xlsx(data, book_name: str, sheet_names: list[str]):
@@ -87,12 +88,12 @@ def write_to_xlsx(data, book_name: str, sheet_names: list[str]):
 
 
 def instantiate_times():
-    times[0] = dwell_time_dist_analysis(rewrite = False, busy_rate=1, sheet_name='normal')
-    times[1] = dwell_time_dist_analysis(rewrite = False, busy_rate=0.5, sheet_name='idle')
-    times[2] = dwell_time_dist_analysis(rewrite = False, busy_rate=2.2, sheet_name='busy')
-    boundaries[0] = [(times[0][i] + times[0][i+1])/2 for i in range(len(times[0]) - 1)]
-    boundaries[1] = [(times[1][i] + times[1][i+1])/2 for i in range(len(times[1]) - 1)]
-    boundaries[2] = [(times[2][i] + times[2][i+1])/2 for i in range(len(times[2]) - 1)]
+    dwell_times[0] = dwell_time_dist_analysis(rewrite = False, busy_rate=1, sheet_name='normal')
+    dwell_times[1] = dwell_time_dist_analysis(rewrite = False, busy_rate=0.5, sheet_name='idle')
+    dwell_times[2] = dwell_time_dist_analysis(rewrite = False, busy_rate=2.2, sheet_name='busy')
+    boundaries[0] = [(dwell_times[0][i] + dwell_times[0][i+1])/2 for i in range(len(dwell_times[0]) - 1)]
+    boundaries[1] = [(dwell_times[1][i] + dwell_times[1][i+1])/2 for i in range(len(dwell_times[1]) - 1)]
+    boundaries[2] = [(dwell_times[2][i] + dwell_times[2][i+1])/2 for i in range(len(dwell_times[2]) - 1)]
     # the times are obtained as [a, b, c, d, ... y, z]
     # using this, if the dwell time of a vessel is between 0 and (a+b)/2, it's ideal anchoring distance from entry side is 445
     # likewise, if it is > (y+z)/2, it's ideal anchoring distance is 2500 - 445 = 2055
@@ -101,7 +102,7 @@ def instantiate_times():
 def obtain_ideal_distance(dwell_time, busy_status = 'normal'):
     sheet_list = {'normal': 0, 'idle': 1, 'busy': 2}
     index = sheet_list[busy_status]
-    print(MIN_IDEAL_DIST + bisect.bisect(boundaries[index], dwell_time) * (MAX_IDEAL_DIST - MIN_IDEAL_DIST)/(len(boundaries[index])))
+    return MIN_IDEAL_DIST + bisect.bisect(boundaries[index], dwell_time) * (MAX_IDEAL_DIST - MIN_IDEAL_DIST)/(len(boundaries[index]))
 
 # instantiate_times()
 # obtain_ideal_distance(19.52, 'busy')
