@@ -21,6 +21,7 @@ class Anchorage:
         x, y = vessel.centre
         return checkVesselInside(self.edges, x, y, vessel.radius)
     
+    
     def generateCornerPoints(self, vessel): #vessel is vessel to be placed
         radius = vessel.radius
         cornerPoints = []
@@ -104,12 +105,13 @@ class Anchorage:
         
 
 class Vessel:
-    def __init__(self, length, centre = None, arrival = 0, departure = 60):
+    def __init__(self, length, centre = None, arrival = 0, departure = 60, number = 0):
         self.length = length
         self.arrival = arrival
         self.departure = departure
         self.centre = centre
         self.radius = self.length + EXTRA_LENGTH
+        self.number = number
     
     def collidesWith(self, vessel): # tangent circles are not considered colliding.
         if self.centre is None or vessel.centre is None:
@@ -118,14 +120,27 @@ class Vessel:
         x2, y2 = vessel.centre
         r1, r2 = self.radius, vessel.radius
         return checkCircleCollision(x1, x2, y1, y2, r1, r2)
+    
+    def obtainCircumscribingHexagon(self):
+        x, y = self.centre
+        r = self.radius
+        vertices = []
+        vertices.append((x-2*r/math.sqrt(3), y))
+        vertices.append((x-r/math.sqrt(3), y+r))
+        vertices.append((x+r/math.sqrt(3), y+r))
+        vertices.append((x+2*r/math.sqrt(3), y))
+        vertices.append((x+r/math.sqrt(3), y-r))
+        vertices.append((x-r/math.sqrt(3), y-r))
+        return vertices
 
         
 # vertices = [(12, -9), (-12, -9), (-12, 20)]
 # anc = Anchorage(vertices)
-# vessel = Vessel(3)
-# vessel2 = Vessel(2, (-10.0, 14.446411629213546))
-# anc.anchored.append(vessel2)
+# # vessel = Vessel(3)
+# # vessel2 = Vessel(2, (-10.0, 14.446411629213546))
+# # anc.anchored.append(vessel2)
 # anc.anchored.append(Vessel(2, (-10, 5)))
+# print(areaMaxInscribedCircle(anc))
 
 
 # print(checkVesselInside(anc.edges, -7.64696316941158, 10.034697940192649, 3))

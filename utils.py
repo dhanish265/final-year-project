@@ -1,11 +1,16 @@
+from copy import deepcopy
 import math
+import polylabel_code
+import numpy as np
+from polylabel_code import polylabel
 
 DEPTH = 35
-# EXTRA_LENGTH = math.sqrt((25*math.sqrt(DEPTH)) ** 2 - DEPTH**2)
-EXTRA_LENGTH = 0
+EXTRA_LENGTH = math.sqrt((25*math.sqrt(DEPTH)) ** 2 - DEPTH**2)
+# EXTRA_LENGTH = 0
 EPSILON = 10 ** (-6)
 MIN_IDEAL_DIST = 445
 MAX_IDEAL_DIST = 2055 #2500 - 445
+MAX_WIDTH = 2500
 
 def calculateArea(vertices):
     vertices.append(vertices[0])
@@ -90,6 +95,71 @@ def findIntersectionsLineCircle(x, y, r, a, b, c):
     y1 = (c-a*x1)/b
     y2 = (c-a*x2)/b
     return [(x1, y1), (x2, y2)]
+
+def areaMaxInscribedCircle(anchorage):
+    vertices = deepcopy(anchorage.vertices)
+    vertices.append(vertices[0])
+    polygon = np.array(vertices)
+    rings = [polygon]
+    
+    for vessel in anchorage.anchored:
+        vertices = vessel.obtainCircumscribingHexagon()
+        vertices.append(vertices[0])
+        rings.append(np.array(vertices))
+        
+    # print(rings)
+    
+    cell = polylabel(rings, precision=10)
+    r = cell.d
+    print(cell.c, r)
+    return math.pi * r * r
+    
+    
+def calculateScore(metrics, numVessels):
+    return np.dot(metrics, np.array([0.1, 0.1, 0.1, 0.1, 0.5, 0.1]))/numVessels
+
+def obtainAverageEffectiveRemainingArea(t, totalArea):
+    total = 0
+    totalTime = t[-1][0] - t[0][0]
+    for i in range(len(t) - 1):
+        total += (t[i+1][0] - t[i][0]) * t[i][1]
+    return total/(totalTime * totalArea)
+    
+def calculateNDE(x, y, anc):
+    NDE = MAX_WIDTH
+    for edge in anc.edges:
+        a, b, c = edge
+        if b == 0:
+            continue
+        y2 = c - a * x
+        if y2 <= y:
+            continue
+        inside = True
+        for a2, b2, c2 in anc.edges:
+            if a2 * x + b2 * y2 > c2:
+                inside = False
+                break
+        if not inside:
+            continue
+        NDE = y2 - y
+        break
+    return NDE
+
+def calculateIntersectionDistance(vessel, anchoredVessels, x, y, calculateDID = True):
+    AID, EDID = 0, 0
+    for ancVessel in anchoredVessels:
+        intersection = findIntersectionsLineCircle(ancVessel.centre[0], ancVessel.centre[1], ancVessel.radius, 1, 0, x)
+        if len(intersection) < 2 or y > max(intersection[1][1], intersection[0][1]):
+            continue
+        AID += abs(intersection[1][1] - intersection[0][1])
+        if not calculateDID:
+            continue
+        if vessel.departure >= ancVessel.departure:
+            EDID += abs(intersection[1][1] - intersection[0][1])
+    return AID, EDID
+
+
+
 
 # def round_to_1(x):
 #     return round(x, -int(math.floor(math.log10(abs(x)))))
