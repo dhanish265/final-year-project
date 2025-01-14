@@ -51,6 +51,7 @@ class AnchoragePlanner:
             self.time_list.append((departure, -1, i+1))
             self.vessels[i+1] = Vessel(length, arrival=arrival, departure=departure, number=i+1)
         self.time_list.sort()
+        print(self.time_list)
         
     def run_main(self):
         
@@ -85,12 +86,8 @@ class AnchoragePlanner:
                         self.queue.append((ogScore, qNode))
                         continue
                     
-                    vessel2 = [ship for ship in anc.anchored if ship.number == vesselNumber][0]
-                    anc.anchored.remove(vessel2)
-                    DID, _  = calculateIntersectionDistance(vessel2, anc.anchored, vessel2.centre[0], vessel2.centre[1], calculateDID=False)
-                    NDE = calculateNDE(vessel2.centre[0], vessel2.centre[1], anc) # normalised distance to exit
-                    area = areaMaxInscribedCircle(anc)
-                    self.amendTotal(time, qNode.total, d = NDE, r = DID, area=area)
+                    # handle departing vessel
+                    self.handleDepartingAnchoredVessel(time, vesselNumber, qNode, anc)
                     
                     # check if any waiting vessels can be added
                     temp_list = [(ogScore, qNode, 0)]
@@ -131,12 +128,7 @@ class AnchoragePlanner:
                             continue
                         
                         # vessel is in anchorage
-                        vessel2 = [ship for ship in anc.anchored if ship.number == vesselNumber][0]
-                        anc.anchored.remove(vessel2)
-                        DID, _  = calculateIntersectionDistance(vessel2, anc.anchored, vessel2.centre[0], vessel2.centre[1], calculateDID=False)
-                        NDE = calculateNDE(vessel2.centre[0], vessel2.centre[1], anc) # normalised distance to exit
-                        area = areaMaxInscribedCircle(anc)
-                        self.amendTotal(time, qNode.total, d = NDE, r = DID, area=area)
+                        self.handleDepartingAnchoredVessel(time, vesselNumber, qNode, anc)
                         
                         # check if any waiting vessels can be added
                         temp_list = [(ogScore, qNode, 0)]
@@ -231,6 +223,82 @@ class AnchoragePlanner:
         self.queue.sort(key = lambda x: x[0])
         bestNode = self.queue[0][1]
         return bestNode.total, bestNode.anchorSpots, self.assignment
+
+    def handleDepartingAnchoredVessel(self, time, vesselNumber, node, anc):
+        vessel2 = [ship for ship in anc.anchored if ship.number == vesselNumber][0]
+        anc.anchored.remove(vessel2)
+        DID, _  = calculateIntersectionDistance(vessel2, anc.anchored, vessel2.centre[0], vessel2.centre[1], calculateDID=False)
+        NDE = calculateNDE(vessel2.centre[0], vessel2.centre[1], anc) # normalised distance to exit
+        area = areaMaxInscribedCircle(anc)
+        self.amendTotal(time, node.total, d = NDE, r = DID, area=area)
+    
+    def run_alternate(self, method = 'NDE'):
+        if len(self.time_list) == 0:
+            # modify later once confirmed
+            return
+        
+        numVessels = 0
+        node = self.queue[0][1]
+        for index in range(len(self.time_list)):
+            time, departing, vesselNumber = self.time_list[index]
+            vessel = self.vessels[vesselNumber]
+            departing = True if departing == -1 else False
+            
+            if departing:
+                waitingSet = set([ship.number for ship in node.waiting])
+                if vesselNumber in waitingSet:
+                    self.amendTotal(time, node.total, t = vessel.departure - vessel.arrival)
+                    node.anchorSpots[vesselNumber] = None
+                    continue
+                
+                # vessel is in anchorage
+                self.handleDepartingAnchoredVessel(time, vesselNumber, node, node.anchorage)
+                #check if any waiting vessels can be admitted
+                i = 0
+                while i < len(node.waiting):
+                    waitVessel = node.waiting[i]
+                    cornerPoints = node.anchorage.generateCornerPoints(waitVessel)
+                    if len(cornerPoints) == 0:
+                        i += 1
+                        continue
+                    
+                    node.waiting.pop(i)
+                    self.amendTotal(time, node.total, t = time - waitVessel.arrival)
+                    self.alternateAnchoringProcess(method, node, time, waitVessel, cornerPoints)
+                    
+                continue
+            
+            # arriving vessel
+            numVessels += 1
+            cornerPoints = node.anchorage.generateCornerPoints(vessel)
+            
+            if len(cornerPoints) == 0:
+                node.waiting.append(vessel)
+                node.anchorSpots[vesselNumber] = None
+                continue
+            self.alternateAnchoringProcess(method, node, time, vessel, cornerPoints)
+        
+        return node.total, node.anchorSpots, self.assignment
+
+    def alternateAnchoringProcess(self, method, node, time, vessel, cornerPoints):
+        rankList = []
+        for cornerPoint in cornerPoints:
+            x, y = cornerPoint
+            if method == 'NDE':
+                NDE = calculateNDE(x, y, node.anchorage)
+                rankList.append((NDE, cornerPoint))
+            
+        rankList.sort(key = lambda x: x[0], reverse=True)
+        x, y = rankList[0][1]
+        AID, _ = calculateIntersectionDistance(vessel, node.anchorage.anchored, x, y, calculateDID=False)
+        NDE = calculateNDE(x, y, node.anchorage)
+        node.anchorage.anchored.append(vessel)
+        vessel.centre = (x, y)
+        node.anchorSpots[vessel.number] = (x, y)
+        area = areaMaxInscribedCircle(node.anchorage)
+        self.amendTotal(time, node.total, d = NDE, r= AID, area=area)
+        self.assignment[vessel.number] = (x, y)
+
 
     def addWaitingVessels(self, numVessels, time, temp_list, final_list):
         while len(temp_list) > 0:
@@ -331,17 +399,23 @@ class AnchoragePlanner:
             total['t'] += t
 
 anchorage_name = 'Synthetic Anchorage (normal)'
-raw_data = data_generator.read_data(anchorage_name)
-sample = raw_data['1']
+# raw_data = data_generator.read_data(anchorage_name)
+# sample = raw_data['1']
 
-# # sample = [(60, 600, 856), (120, 800, 456), (180, 700, 606), (240, 750, 306), (450, 900, 606)]
+sample = [(60, 600, 856), (120, 800, 456), (180, 700, 606), (240, 750, 306), (450, 900, 606)]
 # sample = [(60, 480, 856), (490, 800, 456), (520, 700, 606), (600, 750, 306), (650, 1000, 606)]
 # print(sample)
 
 anc_planner = AnchoragePlanner()
+area = areaMaxInscribedCircle(anc_planner.anchorage)
 anc_planner.populate_time_list(sample)
-# totals, nodeAssignment, plannerAssignment = anc_planner.run_main()
-# print(totals, nodeAssignment, plannerAssignment, sep='\n')
+totals, nodeAssignment, plannerAssignment = anc_planner.run_alternate()
+# print(area)
+print(totals, nodeAssignment, plannerAssignment, sep='\n\n')
+# print(obtainAverageEffectiveRemainingArea(totals['u'], area))
+
+# print(area, anc_planner.anchorage.area)
+# print(obtainAverageEffectiveRemainingArea([(0, area), (900, area)], anc_planner.anchorage.area))
 # print(time_list)
 
 

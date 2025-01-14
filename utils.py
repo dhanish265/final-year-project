@@ -119,8 +119,8 @@ def calculateScore(metrics, numVessels):
     return np.dot(metrics, np.array([0.1, 0.1, 0.1, 0.1, 0.5, 0.1]))/numVessels
 
 def obtainAverageEffectiveRemainingArea(t, totalArea):
-    total = 0
-    totalTime = t[-1][0] - t[0][0]
+    total = t[0][0] * totalArea
+    totalTime = t[-1][0]
     for i in range(len(t) - 1):
         total += (t[i+1][0] - t[i][0]) * t[i][1]
     return total/(totalTime * totalArea)
