@@ -21,6 +21,15 @@ class Anchorage:
         x, y = vessel.centre
         return checkVesselInside(self.edges, x, y, vessel.radius)
     
+    def calculateHoleDegree(self, cornerPoint, radius):
+        distances = []
+        x, y = cornerPoint
+        for vessel in self.anchored:
+            distances.append(math.sqrt((vessel.centre[1] - y) ** 2 + (vessel.centre[0] - x) ** 2) - vessel.radius - radius)
+        for a, b, c in self.edges:
+            distances.append(abs(a*x + b*y - c)/math.sqrt(a**2 + b**2) - radius)
+        distances.sort()
+        return 1 - distances[2]/radius #first 2 are bound to be zero due to cornerpoint being tangent to at least two surfaces 
     
     def generateCornerPoints(self, vessel): #vessel is vessel to be placed
         radius = vessel.radius

@@ -254,6 +254,7 @@ class AnchoragePlanner:
                     pos = [i for i in range(len(node.waiting)) if node.waiting[i].number == vesselNumber][0]
                     node.waiting.pop(pos)
                     self.amendTotal(time, node.total, t = vessel.departure - vessel.arrival)
+                    self.assignment[vesselNumber] = None
                     node.anchorSpots[vesselNumber] = None
                     continue
                 
@@ -293,6 +294,9 @@ class AnchoragePlanner:
             if method == 'NDE':
                 NDE = calculateNDE(x, y, node.anchorage)
                 rankList.append((NDE, cornerPoint))
+            elif method == 'MHD':
+                holeDegree = node.anchorage.calculateHoleDegree(cornerPoint, vessel.radius)
+                rankList.append((holeDegree, cornerPoint))
             
         rankList.sort(key = lambda x: x[0], reverse=True)
         x, y = rankList[0][1]
@@ -405,17 +409,17 @@ class AnchoragePlanner:
             total['t'] += t
 
 anchorage_name = 'Synthetic Anchorage (normal)'
-# raw_data = data_generator.read_data(anchorage_name)
-# sample = raw_data['1']
+raw_data = data_generator.read_data(anchorage_name)
+sample = raw_data['1']
 
 # sample = [(60, 600, 856), (120, 800, 456), (180, 700, 606), (240, 750, 306), (450, 900, 606)]
-sample = [(60, 480, 856), (490, 800, 456), (520, 700, 606), (600, 750, 306), (650, 1000, 606)]
+# sample = [(60, 480, 856), (490, 800, 456), (520, 700, 606), (600, 750, 306), (650, 1000, 606)]
 # print(sample)
 
 anc_planner = AnchoragePlanner()
 area = areaMaxInscribedCircle(anc_planner.anchorage)
 anc_planner.populate_time_list(sample)
-totals, nodeAssignment, plannerAssignment = anc_planner.run_main()
+totals, nodeAssignment, plannerAssignment = anc_planner.run_alternate(method='MHD')
 # print(area)
 print(totals, nodeAssignment, plannerAssignment, sep='\n\n')
 print(obtainAverageEffectiveRemainingArea(totals['u'], area))
