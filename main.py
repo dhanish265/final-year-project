@@ -81,6 +81,8 @@ class AnchoragePlanner:
                     # if the vessel is still in the waiting list
                     waitingSet = set([ship.number for ship in qNode.waiting])
                     if vesselNumber in waitingSet:
+                        pos = [i for i in range(len(qNode.waiting)) if qNode.waiting[i].number == vesselNumber][0]
+                        qNode.waiting.pop(pos)
                         self.amendTotal(time, qNode.total, t = vessel.departure - vessel.arrival)
                         qNode.anchorSpots[vesselNumber] = None
                         self.queue.append((ogScore, qNode))
@@ -122,6 +124,8 @@ class AnchoragePlanner:
                         # if the vessel is still in the waiting list
                         waitingSet = set([ship.number for ship in qNode.waiting])
                         if vesselNumber in waitingSet:
+                            pos = [i for i in range(len(qNode.waiting)) if qNode.waiting[i].number == vesselNumber][0]
+                            qNode.waiting.pop(pos)
                             self.amendTotal(time, qNode.total, t = vessel.departure - vessel.arrival)
                             qNode.anchorSpots[vesselNumber] = None
                             self.queue.append((ogScore, qNode))
@@ -247,6 +251,8 @@ class AnchoragePlanner:
             if departing:
                 waitingSet = set([ship.number for ship in node.waiting])
                 if vesselNumber in waitingSet:
+                    pos = [i for i in range(len(node.waiting)) if node.waiting[i].number == vesselNumber][0]
+                    node.waiting.pop(pos)
                     self.amendTotal(time, node.total, t = vessel.departure - vessel.arrival)
                     node.anchorSpots[vesselNumber] = None
                     continue
@@ -402,17 +408,17 @@ anchorage_name = 'Synthetic Anchorage (normal)'
 # raw_data = data_generator.read_data(anchorage_name)
 # sample = raw_data['1']
 
-sample = [(60, 600, 856), (120, 800, 456), (180, 700, 606), (240, 750, 306), (450, 900, 606)]
-# sample = [(60, 480, 856), (490, 800, 456), (520, 700, 606), (600, 750, 306), (650, 1000, 606)]
+# sample = [(60, 600, 856), (120, 800, 456), (180, 700, 606), (240, 750, 306), (450, 900, 606)]
+sample = [(60, 480, 856), (490, 800, 456), (520, 700, 606), (600, 750, 306), (650, 1000, 606)]
 # print(sample)
 
 anc_planner = AnchoragePlanner()
 area = areaMaxInscribedCircle(anc_planner.anchorage)
 anc_planner.populate_time_list(sample)
-totals, nodeAssignment, plannerAssignment = anc_planner.run_alternate()
+totals, nodeAssignment, plannerAssignment = anc_planner.run_main()
 # print(area)
 print(totals, nodeAssignment, plannerAssignment, sep='\n\n')
-# print(obtainAverageEffectiveRemainingArea(totals['u'], area))
+print(obtainAverageEffectiveRemainingArea(totals['u'], area))
 
 # print(area, anc_planner.anchorage.area)
 # print(obtainAverageEffectiveRemainingArea([(0, area), (900, area)], anc_planner.anchorage.area))
