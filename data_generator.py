@@ -6,7 +6,7 @@ import os.path
 import bisect
 from utils import MIN_IDEAL_DIST, MAX_IDEAL_DIST
 
-LIMIT = 14 * 24 * 60
+LIMIT = 14 * 24 * 60 * 4
 dwell_times = [None] * 3 #normal, idle, busy
 boundaries = [None] * 3
 dwell_time_raw_data = None
@@ -15,13 +15,13 @@ dwell_time_raw_data = None
 def generateData(busy_rate = 1, name = 'Synthetic Anchorage (normal)'):
     # workbook = xlsxwriter.Workbook(name  + '.xlsx')
     data = []
-    for _ in range(100):
+    for _ in range(1):
         # worksheet = workbook.add_worksheet(str(i + 1))
         data_sheet = []
-        currTime = random.exponential(0.45) * 60
+        currTime = random.exponential(0.9) * 60
         while currTime < LIMIT:
             data_sheet.append((round(currTime), round(currTime) + round(busy_rate * random.lognormal(2.4, 1.3) * 60), beta.rvs(2.4, 2.4, 30, 270).item()))
-            currTime += random.exponential(0.45) * 60
+            currTime += random.exponential(0.9) * 60
         data.append(data_sheet)
     write_to_xlsx(data, name + '.xlsx', [str(i) for i in range(1, 101)])
 
@@ -88,6 +88,7 @@ def write_to_xlsx(data, book_name: str, sheet_names: list[str]):
 
 
 def instantiate_times():
+    print('instantiation done')
     dwell_times[0] = dwell_time_dist_analysis(rewrite = False, busy_rate=1, sheet_name='normal')
     dwell_times[1] = dwell_time_dist_analysis(rewrite = False, busy_rate=0.5, sheet_name='idle')
     dwell_times[2] = dwell_time_dist_analysis(rewrite = False, busy_rate=2.2, sheet_name='busy')
@@ -106,6 +107,7 @@ def obtain_ideal_distance(dwell_time, busy_status = 'normal'):
 
 # instantiate_times()
 # obtain_ideal_distance(19.52, 'busy')
+# generateData(name='test_0.90_2')
 
 
 

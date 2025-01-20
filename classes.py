@@ -13,7 +13,7 @@ class Anchorage:
         self.anchored = []
         self.area = calculateArea(vertices)
         # print(self.area)
-        # print(self.edges)
+        print(self.edges)
     
     def isVesselInside(self, vessel):
         if vessel.centre is None:
@@ -101,7 +101,9 @@ class Anchorage:
             # print(A, Y)
             res = tuple(np.linalg.inv(A).dot(Y))
             res = (res[0].item(), res[1].item())
-                # check if generated corner point collides with existing anchored point:
+                # check if generated corner point collides with existing anchored point: 
+            if not checkVesselInside(self.edges, res[0], res[1], radius):
+                continue
             collision = False
             for vessel2 in self.anchored:
                 x, y = vessel2.centre
@@ -114,13 +116,16 @@ class Anchorage:
         
 
 class Vessel:
-    def __init__(self, length, centre = None, arrival = 0, departure = 60, number = 0):
+    def __init__(self, length, centre = None, arrival = 0, departure = 60, number = 0, risk = 0, distance = 0, waitTime = 0):
         self.length = length
         self.arrival = arrival
         self.departure = departure
         self.centre = centre
         self.radius = self.length + EXTRA_LENGTH
         self.number = number
+        self.risk = risk
+        self.distance = distance
+        self.waitTime = waitTime
     
     def collidesWith(self, vessel): # tangent circles are not considered colliding.
         if self.centre is None or vessel.centre is None:

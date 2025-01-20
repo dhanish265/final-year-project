@@ -11,6 +11,8 @@ EPSILON = 10 ** (-6)
 MIN_IDEAL_DIST = 445
 MAX_IDEAL_DIST = 2055 #2500 - 445
 MAX_WIDTH = 2500
+SPSA_WEIGHTS = [np.array([0.053, 0.325, 0.117, -0.287, 0.087, -0.121, -0.219]), np.array([0.019, 0.525, 0.150, -0.729, -0.559, 0.733, -0.389]), np.array([-0.100, 0.614, -0.020, -0.134, -0.406, -0.274, -0.304]), np.array([-0.066, 0.580, -0.002, -0.372, 0.240, 0.712, -0.882]), np.array([-0.185, 0.155, -0.393, 0.189, -0.219, -0.291, -0.559])]
+BEAM_LENGTH = 5
 
 def calculateArea(vertices):
     vertices.append(vertices[0])
@@ -53,7 +55,8 @@ def checkVesselInside(edges, x, y, radius):
             return False
         # check if circle intersects edge twice
         # if perp. dist between edge and circle is smaller than radius, means the edge is too close to the centre of the circle
-        if abs(a*x + b*y - c) ** 2 < (a**2 + b**2) * (radius**2):
+        diff = abs(a*x + b*y - c) ** 2 - (a**2 + b**2) * (radius**2)
+        if diff < -EPSILON:
             return False
     return True
 
@@ -111,8 +114,9 @@ def areaMaxInscribedCircle(anchorage):
     
     cell = polylabel(rings, precision=10)
     r = cell.d
-    print(cell.c, r)
+    # print(cell.c, r)
     return math.pi * r * r
+
     
     
 def calculateScore(metrics, numVessels):
@@ -131,7 +135,7 @@ def calculateNDE(x, y, anc):
         a, b, c = edge
         if b == 0:
             continue
-        y2 = c - a * x
+        y2 = (c - a * x)/b
         if y2 <= y:
             continue
         inside = True
@@ -141,8 +145,7 @@ def calculateNDE(x, y, anc):
                 break
         if not inside:
             continue
-        NDE = y2 - y
-        break
+        NDE = min(y2 - y, NDE)
     return NDE
 
 def calculateIntersectionDistance(vessel, anchoredVessels, x, y, calculateDID = True):

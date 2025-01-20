@@ -1,8 +1,9 @@
 from classes import *
 from utils import *
 import data_generator
-from data_generator import dwell_times, boundaries, dwell_time_raw_data, obtain_ideal_distance, LIMIT
+from data_generator import dwell_times, boundaries, dwell_time_raw_data, obtain_ideal_distance, LIMIT, write_to_xlsx
 from copy import deepcopy
+import time as tm
 
 data_generator.instantiate_times()
 # print(times[0])
@@ -11,11 +12,21 @@ data_generator.instantiate_times()
 LOOK_UP_TIME = 60 * 6 # 6 hours
 
 class QueueNode:
-    def __init__(self, anchorage, total = {'r': 0.0, 'u': [], 'd': 0.0, 't': 0.0}, metric_score = np.array([0.0] * 6), anchorSpots = {}, waiting = []):
+    def __init__(self, anchorage, total=None, metric_score=None, anchorSpots=None, waiting=None):
+        if total is None:
+            total = {'r': 0.0, 'u': [], 'd': 0.0, 't': 0.0}
+        if metric_score is None:
+            metric_score = np.array([0.0] * 6)
+        if anchorSpots is None:
+            anchorSpots = {}
+        if waiting is None:
+            waiting = []
+        
         self.anchorage = anchorage
         self.total = total
         self.anchorSpots = anchorSpots
         self.waiting = waiting
+        self.metric_score = metric_score
         # 1. arrival intersection length (as a percentage of 2500)
         # 2. expected departure intersection length/2500 (based off vessels that are a. currently anchored b. will still be anchored at departure time)
         # 3. (distance between centre of anchor point and ideal anchor distance)/(maximum possible deviation distance)
@@ -25,10 +36,9 @@ class QueueNode:
         
         # from these, obtain a weighted score (out of 100). 
         # each vessel will contribute a score. take the average over number of vessels so far to compute node with lowest overall score
-        self.metric_score = metric_score
 
-class AnchoragePlanner:
-    def __init__(self):
+class AnchoragePlanner:    
+    def __init__(self, standard = True):
         
         self.queue = []
         self.time_list = []
@@ -39,10 +49,14 @@ class AnchoragePlanner:
         self.vessels = {}
         
         # synthetic: [(2000, 1250), (2000, -1250), (-2000, -1250), (-2000, 1250)]
-        self.anchorage = Anchorage([(2000.0, 1250.0), (2000.0, -1250.0), (-2000.0, -1250.0), (-2000.0, 1250.0)])
+        if standard:
+            self.anchorage = Anchorage([(2000.0, 1250.0), (2000.0, -1250.0), (-2000.0, -1250.0), (-2000.0, 1250.0)])
+        else:
+            self.anchorage = Anchorage([(-250.0, 990.0), (-2000.0 ,310.0), (-2000.0, -1250.0), (2000.0, -310.0), (2000.0, 1250.0)])
         
         # append an empty anchorage to the processing queue at the start 
         self.queue.append((0, QueueNode(self.anchorage)))
+        pass
         
     def populate_time_list(self, data):
         for i, row in enumerate(data):
@@ -51,7 +65,7 @@ class AnchoragePlanner:
             self.time_list.append((departure, -1, i+1))
             self.vessels[i+1] = Vessel(length, arrival=arrival, departure=departure, number=i+1)
         self.time_list.sort()
-        print(self.time_list)
+        # print(self.time_list)
         
     def run_main(self):
         
@@ -101,11 +115,14 @@ class AnchoragePlanner:
                             
                     # extend queue with all nodes generated in temporary list
                     self.queue.extend(final_list)
-                leftIndex +=1
-                continue
+                self.pruneQueue()
+                    
+                # amend here
+                # leftIndex +=1
+                # continue
                     
             # while you can still look ahead        
-            while rightIndex < len(self.time_list) and self.time_list[rightIndex][0] <= look_up_time: 
+            while rightIndex < len(self.time_list) and self.time_list[rightIndex][0] <= look_up_time:
                 time, vesselNumber = self.time_list[rightIndex][0], self.time_list[rightIndex][2]
                 departing = True if self.time_list[rightIndex][1] == -1 else False # departure of an existing vessel
                 vessel = self.vessels[vesselNumber]
@@ -160,6 +177,7 @@ class AnchoragePlanner:
                         self.queue.append((score, qNode))
                         continue
                     
+                    temp_queue = []
                     for cornerPoint in cornerPoints:
                         print(vesselNumber, cornerPoint)
                         NDE, AID, indivScore = self.calcDistanceMetrics(time, vessel, anc, cornerPoint)
@@ -183,15 +201,18 @@ class AnchoragePlanner:
                         total2 = deepcopy(total)
                         self.amendTotal(time, total2, d = NDE, r = AID, area = area)
                         score = calculateScore(metric2, numVessels)
-                        self.queue.append((score, QueueNode(anc2, total2, metric2, spots2, deepcopy(qNode.waiting))))
+                        temp_queue.append((score, QueueNode(anc2, total2, metric2, spots2, deepcopy(qNode.waiting))))
+                    temp_queue.sort(key = lambda x: x[0])
+                    temp_queue = temp_queue[:3]
+                    # print('temp', temp_queue)
+                    self.queue.extend(temp_queue)
+                    
+                self.pruneQueue()
                 rightIndex += 1
             
-            # pull back rightIndex by 1 if time of rightIndex is beyond look_up_time
-            # if rightIndex < len(self.time_list) and self.time_list[rightIndex][0] > look_up_time:
-            #     rightIndex -= 1
                 
             # maximum look ahead reached
-            # prune queue based off score
+            # fix incoming vessel based off score
             # if any previously waiting vessels have been admitted, take note of their assignments in the node with the best score
             # and only keep nodes whose assignments agree
             
@@ -209,8 +230,7 @@ class AnchoragePlanner:
             
             for coordinate, admVesselNumber in bestCoordinates:
                 self.assignment[admVesselNumber] = coordinate
-            self.pruneQueue(bestCoordinates)
-            
+            self.eliminateInconsistentNodes(bestCoordinates)
             
             # at this point, right index is beyond the current look-up-time and is unseen
             leftIndex += 1
@@ -228,15 +248,25 @@ class AnchoragePlanner:
         bestNode = self.queue[0][1]
         return bestNode.total, bestNode.anchorSpots, self.assignment
 
-    def handleDepartingAnchoredVessel(self, time, vesselNumber, node, anc):
+    def pruneQueue(self):
+        if len(self.queue) > BEAM_LENGTH:
+            self.queue.sort(key = lambda x: x[0])
+            self.queue = self.queue[:BEAM_LENGTH]
+
+    def handleDepartingAnchoredVessel(self, time, vesselNumber, node, anc, factors = None):
         vessel2 = [ship for ship in anc.anchored if ship.number == vesselNumber][0]
         anc.anchored.remove(vessel2)
         DID, _  = calculateIntersectionDistance(vessel2, anc.anchored, vessel2.centre[0], vessel2.centre[1], calculateDID=False)
         NDE = calculateNDE(vessel2.centre[0], vessel2.centre[1], anc) # normalised distance to exit
         area = areaMaxInscribedCircle(anc)
         self.amendTotal(time, node.total, d = NDE, r = DID, area=area)
+        if factors is not None:
+            factors['t'].append(vessel2.waitTime)
+            factors['r'].append(DID + vessel2.risk)
+            factors['d'].append(NDE + vessel2.distance)
+            factors['time'].append(time)
     
-    def run_alternate(self, method = 'NDE'):
+    def run_alternate(self, method = 'NDE', factors = {'r': [0], 'd': [0], 't': [0], 'time': [0]}, SPSA_weight_setting = 0):
         if len(self.time_list) == 0:
             # modify later once confirmed
             return
@@ -254,12 +284,16 @@ class AnchoragePlanner:
                     pos = [i for i in range(len(node.waiting)) if node.waiting[i].number == vesselNumber][0]
                     node.waiting.pop(pos)
                     self.amendTotal(time, node.total, t = vessel.departure - vessel.arrival)
+                    factors['t'].append(vessel.departure - vessel.arrival)
+                    factors['r'].append(0)
+                    factors['d'].append(0)
+                    factors['time'].append(time)
                     self.assignment[vesselNumber] = None
                     node.anchorSpots[vesselNumber] = None
                     continue
                 
                 # vessel is in anchorage
-                self.handleDepartingAnchoredVessel(time, vesselNumber, node, node.anchorage)
+                self.handleDepartingAnchoredVessel(time, vesselNumber, node, node.anchorage, factors)
                 #check if any waiting vessels can be admitted
                 i = 0
                 while i < len(node.waiting):
@@ -270,8 +304,9 @@ class AnchoragePlanner:
                         continue
                     
                     node.waiting.pop(i)
+                    waitVessel.waitTime = time - waitVessel.arrival
                     self.amendTotal(time, node.total, t = time - waitVessel.arrival)
-                    self.alternateAnchoringProcess(method, node, time, waitVessel, cornerPoints)
+                    self.alternateAnchoringProcess(method, node, time, waitVessel, cornerPoints, SPSA_weight_setting)
                     
                 continue
             
@@ -283,11 +318,11 @@ class AnchoragePlanner:
                 node.waiting.append(vessel)
                 node.anchorSpots[vesselNumber] = None
                 continue
-            self.alternateAnchoringProcess(method, node, time, vessel, cornerPoints)
+            self.alternateAnchoringProcess(method, node, time, vessel, cornerPoints, SPSA_weight_setting)
         
         return node.total, node.anchorSpots, self.assignment
 
-    def alternateAnchoringProcess(self, method, node, time, vessel, cornerPoints):
+    def alternateAnchoringProcess(self, method, node, time, vessel, cornerPoints, SPSA_weight_setting):
         rankList = []
         for cornerPoint in cornerPoints:
             x, y = cornerPoint
@@ -297,6 +332,15 @@ class AnchoragePlanner:
             elif method == 'MHD':
                 holeDegree = node.anchorage.calculateHoleDegree(cornerPoint, vessel.radius)
                 rankList.append((holeDegree, cornerPoint))
+            elif method == 'SPSA':
+                AID, EDID = calculateIntersectionDistance(vessel, node.anchorage.anchored, x, y, calculateDID=True)
+                NDE = calculateNDE(x, y, node.anchorage)
+                dwell = vessel.departure - time
+                scores = [AID, EDID, NDE, dwell * AID, dwell * EDID, dwell * NDE, dwell * AID * EDID]
+                score = -np.dot(np.array(scores), SPSA_WEIGHTS[SPSA_weight_setting]) 
+                # since this is to be minimised in the original algorithm, 
+                # the negative is taken to be consistent with the maximisation of the other 2 algorithms
+                rankList.append((score, cornerPoint))
             
         rankList.sort(key = lambda x: x[0], reverse=True)
         x, y = rankList[0][1]
@@ -304,6 +348,8 @@ class AnchoragePlanner:
         NDE = calculateNDE(x, y, node.anchorage)
         node.anchorage.anchored.append(vessel)
         vessel.centre = (x, y)
+        vessel.risk += AID
+        vessel.distance += NDE
         node.anchorSpots[vessel.number] = (x, y)
         area = areaMaxInscribedCircle(node.anchorage)
         self.amendTotal(time, node.total, d = NDE, r= AID, area=area)
@@ -355,7 +401,7 @@ class AnchoragePlanner:
                 temp_list.append((new_score, currNodeCopy, j))
       
         
-    def pruneQueue(self, bestCoordinates):
+    def eliminateInconsistentNodes(self, bestCoordinates):
         print('pruning reached')
         newQueue = []
         for score, node in self.queue:
@@ -365,6 +411,7 @@ class AnchoragePlanner:
                     if node.anchorSpots[vesselNumber] is not None:
                         canBeAdded = False
                         break
+                    continue
                 if node.anchorSpots[vesselNumber] is None:
                     canBeAdded = False
                     break
@@ -408,24 +455,56 @@ class AnchoragePlanner:
         if t is not None:
             total['t'] += t
 
-anchorage_name = 'Synthetic Anchorage (normal)'
-raw_data = data_generator.read_data(anchorage_name)
-sample = raw_data['1']
+# anchorage_name = 'Synthetic Anchorage (normal)'
+# raw_data = data_generator.read_data(anchorage_name)
+# sample = raw_data['1']
 
-# sample = [(60, 600, 856), (120, 800, 456), (180, 700, 606), (240, 750, 306), (450, 900, 606)]
-# sample = [(60, 480, 856), (490, 800, 456), (520, 700, 606), (600, 750, 306), (650, 1000, 606)]
-# print(sample)
+# # sample = [(60, 600, 856), (120, 800, 456), (180, 700, 606), (240, 750, 306), (450, 900, 606)]
+# # sample = [(60, 480, 856), (490, 800, 456), (520, 700, 606), (600, 750, 306), (650, 1000, 606)]
+# # print(sample)
 
-anc_planner = AnchoragePlanner()
-area = areaMaxInscribedCircle(anc_planner.anchorage)
-anc_planner.populate_time_list(sample)
-totals, nodeAssignment, plannerAssignment = anc_planner.run_alternate(method='MHD')
-# print(area)
-print(totals, nodeAssignment, plannerAssignment, sep='\n\n')
-print(obtainAverageEffectiveRemainingArea(totals['u'], area))
+# anc_planner = AnchoragePlanner()
+# area = areaMaxInscribedCircle(anc_planner.anchorage)
+# anc_planner.populate_time_list(sample)
+# totals, nodeAssignment, plannerAssignment = anc_planner.run_alternate(method='MHD')
+# # print(area)
+# print(totals, nodeAssignment, plannerAssignment, sep='\n\n')
+# print(obtainAverageEffectiveRemainingArea(totals['u'], area))
 
 # print(area, anc_planner.anchorage.area)
 # print(obtainAverageEffectiveRemainingArea([(0, area), (900, area)], anc_planner.anchorage.area))
 # print(time_list)
+
+def run():
+    anchorage_name = 'Synthetic Anchorage (normal)'
+    raw_data = data_generator.read_data(anchorage_name)
+    
+    
+    samples = []
+    samples.append([(60, 600, 856), (120, 800, 456), (180, 700, 606), (240, 750, 306), (450, 900, 606)])
+    samples.append([(60, 480, 856), (490, 800, 456), (520, 700, 606), (600, 750, 306)])
+    # print(sample)
+    
+    data = []
+    for i in range(1, 2):
+    # for sample in samples:
+        start_time = tm.ctime(tm.time())
+        sample = raw_data[str(i)]
+        print(i)
+        anc_planner = AnchoragePlanner()
+        area = areaMaxInscribedCircle(anc_planner.anchorage)
+        anc_planner.populate_time_list(sample)
+        totals, nodeAssignment, plannerAssignment = anc_planner.run_main()
+        print(totals, nodeAssignment, plannerAssignment, sep='\n\n')
+        util = obtainAverageEffectiveRemainingArea(totals['u'], area)
+        risk = totals['r']/len(anc_planner.vessels)
+        dist = totals['d']/len(anc_planner.vessels)
+        time = totals['t']/len(anc_planner.vessels)
+        data.append((risk, util, dist, time))
+    print(data)
+    print(start_time)
+    print(tm.ctime(tm.time()))
+    # write_to_xlsx([data], 'synthetic_normal_NHD.xlsx', ['data'])
+run()
 
 
