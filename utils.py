@@ -13,7 +13,7 @@ MAX_IDEAL_DIST = 2055 #2500 - 445
 MAX_WIDTH = 2500
 SPSA_WEIGHTS = [np.array([0.053, 0.325, 0.117, -0.287, 0.087, -0.121, -0.219]), np.array([0.019, 0.525, 0.150, -0.729, -0.559, 0.733, -0.389]), np.array([-0.100, 0.614, -0.020, -0.134, -0.406, -0.274, -0.304]), np.array([-0.066, 0.580, -0.002, -0.372, 0.240, 0.712, -0.882]), np.array([-0.185, 0.155, -0.393, 0.189, -0.219, -0.291, -0.559])]
 BEAM_LENGTH = 5
-EXPANSION_SIZE = 5
+EXPANSION_SIZE = 3
 
 def calculateArea(vertices):
     vertices.append(vertices[0])
@@ -117,17 +117,16 @@ def areaMaxInscribedCircle(anchorage):
     r = cell.d
     # print(cell.c, r)
     return math.pi * r * r
-
-    
+   
     
 def calculateScore(metrics, numVessels):
     return np.dot(metrics, np.array([0.1, 0.1, 0.1, 0.1, 0.5, 0.1]))/numVessels
 
-def obtainAverageEffectiveRemainingArea(t, totalArea):
-    total = t[0][0] * totalArea
-    totalTime = t[-1][0]
-    for i in range(len(t) - 1):
-        total += (t[i+1][0] - t[i][0]) * t[i][1]
+def obtainAverageArea(totals, totalArea, param = 'util'):
+    total = 0
+    totalTime = totals[-1]['time'] - totals[0]['time']
+    for i in range(len(totals) - 1):
+        total += (totals[i+1]['time'] - totals[i]['time']) * totals[i]['area']
     return total/(totalTime * totalArea)
     
 def calculateNDE(x, y, anc):

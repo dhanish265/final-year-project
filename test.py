@@ -1,10 +1,11 @@
 from numpy import random
 import json
+import classes
 
 
 val = []
 for i in range(100):
-    val.append(random.exponential(.9) * 60)
+    val.append(random.lognormal(2.4, 1.3) * 60)
 val.sort(reverse=True)
 
 print(sum(val)/len(val))
@@ -46,6 +47,9 @@ None, 768: None, 769: None, 770: None, 771: None, 772: (-1720.1624949675459, 918
 # arr = [1, 2]
 # print(arr[:3])
 
-f = open('file.json', 'w')
-json.dump([a,b], f, indent=6)
-f.close()
+# f = open('file.json', 'w')
+# json.dump([a,b], f, indent=6)
+# f.close()
+
+anc = classes.Anchorage(([(-250.0, 990.0), (-2000.0 ,310.0), (-2000.0, -1250.0), (2000.0, -310.0), (2000.0, 1250.0)]))
+print(anc.area)

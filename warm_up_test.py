@@ -16,7 +16,7 @@ samples = []
 samples.append([(60, 600, 856), (120, 800, 456), (180, 700, 606), (240, 750, 306), (450, 900, 606)])
 samples.append([(60, 480, 856), (490, 800, 456), (520, 700, 606), (600, 750, 306)])
 
-def process(totals):
+def process_steady(totals):
     data = []
     for total in totals:
         entry = []
@@ -50,10 +50,11 @@ for i in range(1, 2):
     end_time = tm.ctime(tm.time())
 
     # print(totals, nodeAssignment, plannerAssignment, sep='\n\n')
+    
     # print(factors)
     for total in totals:
         print(total)
-    data = process(totals)
+    data = process_steady(totals)
     for x in nodeAssignment:
         if x not in plannerAssignment:
             print('mismatch')
@@ -67,8 +68,10 @@ for i in range(1, 2):
     # data2 = process_util(totals['u'])
     # print(data)
     # print(data2)
-    write_to_xlsx([data], 'test_main'  + '.xlsx', sheet_names=['data'])
     print(start_time, end_time)
+    print(len([x for x in nodeAssignment if nodeAssignment[x] is None]))
+    write_to_xlsx([data], 'test_main' + '_.xlsx', sheet_names=['data'])
+    
     
     f = open('file.json', 'w')
     json.dump(totals, f, indent = 2)
