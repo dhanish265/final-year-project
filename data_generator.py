@@ -6,18 +6,18 @@ import os.path
 import bisect
 from utils import MIN_IDEAL_DIST, MAX_IDEAL_DIST
 
-LIMIT = 21 * 24 * 60
+LIMIT = 21.5 * 24 * 60
 dwell_times = [None] * 3 #normal, idle, busy
 boundaries = [None] * 3
 dwell_time_raw_data = None
 exp_rate = 0.45
-LOWER_LIMIT, UPPER_LIMIT = 24 * 60, 24 * 60 * 2
+LOWER_LIMIT, UPPER_LIMIT = 12.5 * 24 * 60, 24 * 60 * 19.5
 # print(times)
 
 def generateData(busy_rate = 1, name = 'Synthetic Anchorage (normal)'):
     # workbook = xlsxwriter.Workbook(name  + '.xlsx')
     data = []
-    for _ in range(1):
+    for _ in range(100):
         # worksheet = workbook.add_worksheet(str(i + 1))
         data_sheet = []
         currTime = random.exponential(exp_rate) * 60
@@ -109,7 +109,7 @@ def obtain_ideal_distance(dwell_time, busy_status = 'normal'):
 
 # instantiate_times()
 # obtain_ideal_distance(19.52, 'busy')
-# generateData(name='test_0.45_inverse')
+# generateData(busy_rate=1, name='Ahirkapi Anchorage')
 
 
 

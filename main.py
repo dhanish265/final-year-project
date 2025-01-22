@@ -40,8 +40,9 @@ class QueueNode:
         # each vessel will contribute a score. take the average over number of vessels so far to compute node with lowest overall score
 
 class AnchoragePlanner:    
-    def __init__(self, standard = True):
+    def __init__(self, standard = True, busyStatus = 'normal'):
         
+        self.busyStatus = busyStatus
         self.queue = []
         self.time_list = []
         
@@ -371,7 +372,7 @@ class AnchoragePlanner:
         vessel.centre = (x, y)
         node.anchorSpots[vessel.number] = (x, y)
         area = areaMaxInscribedCircle(node.anchorage)
-        self.amendTotal(time, node.total, d = NDE, ra= AID, area=area, util = math.pi * vessel.radius ** 2, t = max(0, min(time, UPPER_LIMIT) - max(vessel.arrival, LOWER_LIMIT), vessel=vessel))
+        self.amendTotal(time, node.total, d = NDE, ra= AID, area=area, util = math.pi * vessel.radius ** 2, t = max(0, min(time, UPPER_LIMIT) - max(vessel.arrival, LOWER_LIMIT)), vessel=vessel)
         self.assignment[vessel.number] = (x, y)
 
 
@@ -461,7 +462,7 @@ class AnchoragePlanner:
         
         # print(obtain_ideal_distance(vessel.departure - time))                
         # 3. (difference in distance between centre of anchor point and entry line (max width/2 assuming anchorage is centred around origin) and ideal anchor distance)/(maximum possible deviation distance)
-        indivScore[2] = abs((MAX_WIDTH/2 - y) - obtain_ideal_distance(vessel.departure - time))/(MAX_IDEAL_DIST - MIN_IDEAL_DIST) * 100
+        indivScore[2] = abs((MAX_WIDTH/2 - y) - obtain_ideal_distance(vessel.departure - time, self.busyStatus))/(MAX_IDEAL_DIST - MIN_IDEAL_DIST) * 100
                     
         # 4. minimise normalised distance to entry
         NDE = calculateNDE(x, y, anc)
@@ -471,9 +472,10 @@ class AnchoragePlanner:
     def amendTotal(self, time, total, d = None, ra = None, rd = None, area = None, t = None, util = None, vessel = None):
         
         entry = deepcopy(total[-1])
-        entry['time'] = time
         
         if time > UPPER_LIMIT:
+            if total[-1]['time'] < UPPER_LIMIT:
+                entry['time'] = time
             if t is not None and vessel is not None and vessel.arrival < UPPER_LIMIT:
                 entry['t'][0] += t
                 entry['t'][1] += 1
@@ -508,50 +510,53 @@ class AnchoragePlanner:
         total.append(entry)
         
 
+anchorage_names = ['Synthetic Anchorage (normal)', 'Synthetic Anchorage (busy)', 'Synthetic Anchorage (idle)', 'Ahirkapi Anchorage']
 def run():
-    anchorage_name = 'Synthetic Anchorage (normal)'
-    raw_data = data_generator.read_data(anchorage_name)
+    # anchorage_name = 'Synthetic Anchorage (normal)'
+    # raw_data = data_generator.read_data(anchorage_name)
     # return 1, 2
     
-    samples = []
-    samples.append([(60, 600, 856), (120, 800, 456), (180, 700, 606), (240, 750, 306), (450, 900, 606)])
-    samples.append([(60, 480, 856), (490, 800, 456), (520, 700, 606), (600, 750, 306)])
+    # samples = []
+    # samples.append([(60, 600, 856), (120, 800, 456), (180, 700, 606), (240, 750, 306), (450, 900, 606)])
+    # samples.append([(60, 480, 856), (490, 800, 456), (520, 700, 606), (600, 750, 306)])
     # print(sample)
     
-    data = []
-    for i in range(1, 2):
+    i = 1
+    for anchorage_name in anchorage_names:
+        data = []
     # for sample in samples:
         start_time = tm.ctime(tm.time())
+        raw_data = data_generator.read_data(anchorage_name)
         sample = raw_data[str(i)]
-        print(i)
-        anc_planner = AnchoragePlanner()
+        
+        if 'busy' in anchorage_name:
+            busyStatus = 'busy'
+        elif 'idle' in anchorage_name:
+            busyStatus = 'idle'
+        else: busyStatus = 'normal'
+        
+        if 'Ahirkapi' in anchorage_name:
+            anc_planner = AnchoragePlanner(standard=False, busyStatus=busyStatus)
+        else:
+            anc_planner = AnchoragePlanner(standard=True, busyStatus=busyStatus)
+            
         area = areaMaxInscribedCircle(anc_planner.anchorage)
         anc_planner.populate_time_list(sample)
         totals, nodeAssignment, plannerAssignment = anc_planner.run_main()
+        print(totals)
         end_time = tm.ctime(tm.time())
         
-        print(start_time, end_time)
-        # print(totals, nodeAssignment, plannerAssignment, sep='\n\n')
-        print(len([x for x in nodeAssignment if nodeAssignment[x] is None]))
-        utilavg = obtainAverageArea(totals, area, param='area')
-        remavg = obtainAverageArea(totals, anc_planner.anchorage.area, param='util')
-        risk = (totals[-1]['ra'][1]/totals[-1]['ra'][0] + totals[-1]['rd'][1]/totals[-1]['rd'][0])/2
-        dist = totals[-1]['d'][1]/totals[-1]['d'][0]
-        time = totals[-1]['t'][1]/totals[-1]['t'][0]
+        utilavg = obtainAverageArea(totals, area, UPPER_LIMIT, LOWER_LIMIT, param='area')
+        remavg = obtainAverageArea(totals, anc_planner.anchorage.area, UPPER_LIMIT, LOWER_LIMIT, param='util')
+        risk = (totals[-1]['ra'][0]/totals[-1]['ra'][1] + totals[-1]['rd'][0]/totals[-1]['rd'][1])/2
+        dist = totals[-1]['d'][0]/totals[-1]['d'][1]
+        time = totals[-1]['t'][0]/totals[-1]['t'][1]
         
         data.append((risk, dist, time, remavg, utilavg))
-    print(data)
-    # print(start_time)
-    # print(tm.ctime(tm.time()))
-    return start_time, tm.ctime(tm.time())
-    # write_to_xlsx([data], 'synthetic_normal_NHD.xlsx', ['data'])
+        data.append((start_time, end_time))
+        write_to_xlsx([data], 'temp_ + ' + anchorage_name + '.xlsx', ['data'])
+    
+run()
 
-# BEAM_LENGTH, EXPANSION_SIZE = 6, 3
-s1, e1 = run()
-# BEAM_LENGTH, EXPANSION_SIZE = 6, 4
-# s2, e2 = run()
-# print(BEAM_LENGTH, EXPANSION_SIZE)
-print(s1, e1)
-# print(s2, e2)
 
 

@@ -4,6 +4,7 @@ import polylabel_code
 import numpy as np
 from polylabel_code import polylabel
 
+
 DEPTH = 35
 EXTRA_LENGTH = math.sqrt((25*math.sqrt(DEPTH)) ** 2 - DEPTH**2)
 # EXTRA_LENGTH = 0
@@ -122,11 +123,11 @@ def areaMaxInscribedCircle(anchorage):
 def calculateScore(metrics, numVessels):
     return np.dot(metrics, np.array([0.1, 0.1, 0.1, 0.1, 0.5, 0.1]))/numVessels
 
-def obtainAverageArea(totals, totalArea, param = 'util'):
+def obtainAverageArea(totals, totalArea, upper, lower, param = 'util'):
     total = 0
     totalTime = totals[-1]['time'] - totals[0]['time']
     for i in range(len(totals) - 1):
-        total += (totals[i+1]['time'] - totals[i]['time']) * totals[i]['area']
+        total += (min(totals[i+1]['time'], upper)  - max(lower, totals[i]['time'])) * totals[i][param]
     return total/(totalTime * totalArea)
     
 def calculateNDE(x, y, anc):
