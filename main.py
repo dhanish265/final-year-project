@@ -99,7 +99,7 @@ class AnchoragePlanner:
                     waitingSet = set([ship.number for ship in qNode.waiting])
                     if vesselNumber in waitingSet:
                         pos = [i for i in range(len(qNode.waiting)) if qNode.waiting[i].number == vesselNumber][0]
-                        qNode.waiting.pop(pos)
+                        vessel = qNode.waiting.pop(pos)
                         self.amendTotal(time, qNode.total, t = max(0, min(vessel.departure, UPPER_LIMIT) - max(vessel.arrival, LOWER_LIMIT)), vessel=vessel)
                         qNode.anchorSpots[vesselNumber] = None
                         self.queue.append((ogScore, qNode))
@@ -482,6 +482,7 @@ class AnchoragePlanner:
                 total.append(entry)
             return
         
+        entry['time'] = time
         if time < LOWER_LIMIT:
             if area is not None:
                 entry['area'] = area
@@ -510,7 +511,8 @@ class AnchoragePlanner:
         total.append(entry)
         
 
-anchorage_names = ['Synthetic Anchorage (normal)', 'Synthetic Anchorage (busy)', 'Synthetic Anchorage (idle)', 'Ahirkapi Anchorage']
+# anchorage_names = ['Synthetic Anchorage (normal)', 'Synthetic Anchorage (busy)', 'Synthetic Anchorage (idle)', 'Ahirkapi Anchorage']
+anchorage_names = ['Ahirkapi Anchorage']
 def run():
     # anchorage_name = 'Synthetic Anchorage (normal)'
     # raw_data = data_generator.read_data(anchorage_name)
@@ -521,7 +523,7 @@ def run():
     # samples.append([(60, 480, 856), (490, 800, 456), (520, 700, 606), (600, 750, 306)])
     # print(sample)
     
-    i = 1
+    i = 5
     for anchorage_name in anchorage_names:
         data = []
     # for sample in samples:
@@ -542,8 +544,10 @@ def run():
             
         area = areaMaxInscribedCircle(anc_planner.anchorage)
         anc_planner.populate_time_list(sample)
+        print(anc_planner.time_list[0])
         totals, nodeAssignment, plannerAssignment = anc_planner.run_main()
-        print(totals)
+        for total in totals:
+            print(total)
         end_time = tm.ctime(tm.time())
         
         utilavg = obtainAverageArea(totals, area, UPPER_LIMIT, LOWER_LIMIT, param='area')

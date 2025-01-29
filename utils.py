@@ -15,6 +15,10 @@ MAX_WIDTH = 2500
 SPSA_WEIGHTS = [np.array([0.053, 0.325, 0.117, -0.287, 0.087, -0.121, -0.219]), np.array([0.019, 0.525, 0.150, -0.729, -0.559, 0.733, -0.389]), np.array([-0.100, 0.614, -0.020, -0.134, -0.406, -0.274, -0.304]), np.array([-0.066, 0.580, -0.002, -0.372, 0.240, 0.712, -0.882]), np.array([-0.185, 0.155, -0.393, 0.189, -0.219, -0.291, -0.559])]
 BEAM_LENGTH = 5
 EXPANSION_SIZE = 3
+WAIT_TIME_WEIGHT = 0.60
+WEIGHTS = np.array([(1-WAIT_TIME_WEIGHT)/5] * 6)
+WEIGHTS[4] = WAIT_TIME_WEIGHT
+print(WEIGHTS)
 
 def calculateArea(vertices):
     vertices.append(vertices[0])
@@ -121,12 +125,14 @@ def areaMaxInscribedCircle(anchorage):
    
     
 def calculateScore(metrics, numVessels):
-    return np.dot(metrics, np.array([0.1, 0.1, 0.1, 0.1, 0.5, 0.1]))/numVessels
+    return np.dot(metrics, WEIGHTS)/numVessels
 
 def obtainAverageArea(totals, totalArea, upper, lower, param = 'util'):
     total = 0
-    totalTime = totals[-1]['time'] - totals[0]['time']
+    totalTime = min(totals[-1]['time'], upper) - max(lower, totals[0]['time'])
     for i in range(len(totals) - 1):
+        if totals[i]['time'] > upper:
+            break
         total += (min(totals[i+1]['time'], upper)  - max(lower, totals[i]['time'])) * totals[i][param]
     return total/(totalTime * totalArea)
     

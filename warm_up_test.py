@@ -70,7 +70,7 @@ for i in range(1, 2):
     # print(data2)
     print(start_time, end_time)
     print(len([x for x in nodeAssignment if nodeAssignment[x] is None]))
-    write_to_xlsx([data], 'test_main' + '_.xlsx', sheet_names=['data'])
+    write_to_xlsx([data], 'test_main' + '2.xlsx', sheet_names=['data'])
     
     
     f = open('file.json', 'w')

@@ -12,6 +12,7 @@ boundaries = [None] * 3
 dwell_time_raw_data = None
 exp_rate = 0.45
 LOWER_LIMIT, UPPER_LIMIT = 12.5 * 24 * 60, 24 * 60 * 19.5
+# LOWER_LIMIT, UPPER_LIMIT = 0 * 24 * 60, 150000
 # print(times)
 
 def generateData(busy_rate = 1, name = 'Synthetic Anchorage (normal)'):
