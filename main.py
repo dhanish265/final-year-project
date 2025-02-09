@@ -511,8 +511,8 @@ class AnchoragePlanner:
         total.append(entry)
         
 
-# anchorage_names = ['Synthetic Anchorage (normal)', 'Synthetic Anchorage (busy)', 'Synthetic Anchorage (idle)', 'Ahirkapi Anchorage']
-anchorage_names = ['Ahirkapi Anchorage']
+anchorage_names = ['Synthetic Anchorage (normal)', 'Synthetic Anchorage (busy)', 'Synthetic Anchorage (idle)', 'Ahirkapi Anchorage']
+# anchorage_names = ['Ahirkapi Anchorage']  
 def run():
     # anchorage_name = 'Synthetic Anchorage (normal)'
     # raw_data = data_generator.read_data(anchorage_name)
@@ -523,41 +523,44 @@ def run():
     # samples.append([(60, 480, 856), (490, 800, 456), (520, 700, 606), (600, 750, 306)])
     # print(sample)
     
-    i = 5
+    i = 12
+    
     for anchorage_name in anchorage_names:
         data = []
-    # for sample in samples:
-        start_time = tm.ctime(tm.time())
         raw_data = data_generator.read_data(anchorage_name)
-        sample = raw_data[str(i)]
         
-        if 'busy' in anchorage_name:
-            busyStatus = 'busy'
-        elif 'idle' in anchorage_name:
-            busyStatus = 'idle'
-        else: busyStatus = 'normal'
-        
-        if 'Ahirkapi' in anchorage_name:
-            anc_planner = AnchoragePlanner(standard=False, busyStatus=busyStatus)
-        else:
-            anc_planner = AnchoragePlanner(standard=True, busyStatus=busyStatus)
-            
-        area = areaMaxInscribedCircle(anc_planner.anchorage)
-        anc_planner.populate_time_list(sample)
-        print(anc_planner.time_list[0])
-        totals, nodeAssignment, plannerAssignment = anc_planner.run_main()
-        for total in totals:
-            print(total)
-        end_time = tm.ctime(tm.time())
-        
-        utilavg = obtainAverageArea(totals, area, UPPER_LIMIT, LOWER_LIMIT, param='area')
-        remavg = obtainAverageArea(totals, anc_planner.anchorage.area, UPPER_LIMIT, LOWER_LIMIT, param='util')
-        risk = (totals[-1]['ra'][0]/totals[-1]['ra'][1] + totals[-1]['rd'][0]/totals[-1]['rd'][1])/2
-        dist = totals[-1]['d'][0]/totals[-1]['d'][1]
-        time = totals[-1]['t'][0]/totals[-1]['t'][1]
-        
-        data.append((risk, dist, time, remavg, utilavg))
-        data.append((start_time, end_time))
+        for j in range(1):
+            # for i in range(6, 11):
+                sample = raw_data[str(i)]
+                if 'busy' in anchorage_name:
+                    busyStatus = 'busy'
+                elif 'idle' in anchorage_name:
+                    busyStatus = 'idle'
+                else: busyStatus = 'normal'
+                
+                if 'Ahirkapi' in anchorage_name:
+                    anc_planner = AnchoragePlanner(standard=False, busyStatus=busyStatus)
+                else:
+                    anc_planner = AnchoragePlanner(standard=True, busyStatus=busyStatus)
+                    
+                area = areaMaxInscribedCircle(anc_planner.anchorage)
+                anc_planner.populate_time_list(sample)
+                print(anc_planner.time_list[0])
+                start_time = tm.ctime(tm.time())
+                totals, nodeAssignment, plannerAssignment = anc_planner.run_main()
+                # totals, nodeAssignment, plannerAssignment = anc_planner.run_alternate(method='SPSA', SPSA_weight_setting=j)
+                for total in totals:
+                    print(total)
+                end_time = tm.ctime(tm.time())
+                print(start_time, end_time)
+                utilavg = obtainAverageArea(totals, area, UPPER_LIMIT, LOWER_LIMIT, param='area')
+                remavg = obtainAverageArea(totals, anc_planner.anchorage.area, UPPER_LIMIT, LOWER_LIMIT, param='util')
+                risk = (totals[-1]['ra'][0]/totals[-1]['ra'][1] + totals[-1]['rd'][0]/totals[-1]['rd'][1])/2
+                dist = totals[-1]['d'][0]/totals[-1]['d'][1]
+                time = totals[-1]['t'][0]/totals[-1]['t'][1]
+                
+                data.append((risk, dist, time, remavg, utilavg))
+                data.append((start_time, end_time))
         write_to_xlsx([data], 'temp_ + ' + anchorage_name + '.xlsx', ['data'])
     
 run()

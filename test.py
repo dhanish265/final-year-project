@@ -1,14 +1,14 @@
 from numpy import random
 import json
 import classes
+from main import obtain_ideal_distance
 
+# val = []
+# for i in range(100):
+#     val.append(random.lognormal(2.4, 1.3) * 60)
+# val.sort(reverse=True)
 
-val = []
-for i in range(100):
-    val.append(random.lognormal(2.4, 1.3) * 60)
-val.sort(reverse=True)
-
-print(sum(val)/len(val))
+# print(sum(val)/len(val))
 
 a = [{1: (1712.1864597746107, -962.1864597746106), 2: (1720.4002714347575, 970.4002714347577), 3: (-1620.0502826558768, 870.0502826558768), 4: (1147.0776551974852, 956.0987648522946), 5: (1465.9921499473269, 348.94200628331134), 
 6: (-1723.5372644691588, 973.5372644691588), 7: (666.3106763750292, 438.22251296732867), 8: (363.7509979637103, 
@@ -53,3 +53,5 @@ None, 768: None, 769: None, 770: None, 771: None, 772: (-1720.1624949675459, 918
 
 anc = classes.Anchorage(([(-250.0, 990.0), (-2000.0 ,310.0), (-2000.0, -1250.0), (2000.0, -310.0), (2000.0, 1250.0)]))
 print(anc.area)
+
+print(obtain_ideal_distance(56000))
