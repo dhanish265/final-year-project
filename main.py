@@ -511,8 +511,9 @@ class AnchoragePlanner:
         total.append(entry)
         
 
-anchorage_names = ['Synthetic Anchorage (normal)', 'Synthetic Anchorage (busy)', 'Synthetic Anchorage (idle)', 'Ahirkapi Anchorage']
-# anchorage_names = ['Ahirkapi Anchorage']  
+# anchorage_names = ['Synthetic Anchorage (normal)', 'Synthetic Anchorage (busy)', 'Synthetic Anchorage (idle)', 'Ahirkapi Anchorage']
+anchorage_names = ['Ahirkapi Anchorage'] 
+# anchorage_names = ['Synthetic Anchorage (idle)', 'Ahirkapi Anchorage']   
 def run():
     # anchorage_name = 'Synthetic Anchorage (normal)'
     # raw_data = data_generator.read_data(anchorage_name)
@@ -523,14 +524,14 @@ def run():
     # samples.append([(60, 480, 856), (490, 800, 456), (520, 700, 606), (600, 750, 306)])
     # print(sample)
     
-    i = 12
+    i = 16
     
     for anchorage_name in anchorage_names:
         data = []
         raw_data = data_generator.read_data(anchorage_name)
         
         for j in range(1):
-            # for i in range(6, 11):
+            for i in range(11, 16):
                 sample = raw_data[str(i)]
                 if 'busy' in anchorage_name:
                     busyStatus = 'busy'
