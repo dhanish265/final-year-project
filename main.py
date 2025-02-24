@@ -88,7 +88,7 @@ class AnchoragePlanner:
                     look_up_time = currTime + LOOK_UP_TIME
                     continue
                 
-                # unseen departure that must be handled now
+                # unseen departure that must be handled now - ties to line 231, else: self.cleanUp(bestNode)
                 time, vesselNumber = self.time_list[leftIndex][0], self.time_list[leftIndex][2]
                 for _ in range(len(self.queue)):
                     ogScore, qNode = self.queue.pop(0)
@@ -268,11 +268,11 @@ class AnchoragePlanner:
                     bestCoordinates.append((bestNode.anchorSpots[k], k))
         else:
             for k in self.assignment: 
-                    if self.assignment[k] is not None: # already permanently assigned and hence irrelevant
-                        continue
-                    # not permanently assigned, but best node has somehow managed to remove it from waiting list
-                    if k in bestNode.anchorSpots and bestNode.anchorSpots[k] is not None:
-                        bestCoordinates.append((bestNode.anchorSpots[k], k))
+                if self.assignment[k] is not None: # already permanently assigned and hence irrelevant
+                    continue
+                # not permanently assigned, but best node has somehow managed to remove it from waiting list
+                if k in bestNode.anchorSpots and bestNode.anchorSpots[k] is not None:
+                    bestCoordinates.append((bestNode.anchorSpots[k], k))
                 
         if len(bestCoordinates) > 0:
             for coordinate, vesselNumber in bestCoordinates:
@@ -511,8 +511,8 @@ class AnchoragePlanner:
         total.append(entry)
         
 
-# anchorage_names = ['Synthetic Anchorage (normal)', 'Synthetic Anchorage (busy)', 'Synthetic Anchorage (idle)', 'Ahirkapi Anchorage']
-anchorage_names = ['Ahirkapi Anchorage'] 
+anchorage_names = ['Synthetic Anchorage (normal)', 'Synthetic Anchorage (busy)', 'Synthetic Anchorage (idle)', 'Ahirkapi Anchorage']
+# anchorage_names = ['Ahirkapi Anchorage'] 
 # anchorage_names = ['Synthetic Anchorage (idle)', 'Ahirkapi Anchorage']   
 def run():
     # anchorage_name = 'Synthetic Anchorage (normal)'
@@ -524,14 +524,14 @@ def run():
     # samples.append([(60, 480, 856), (490, 800, 456), (520, 700, 606), (600, 750, 306)])
     # print(sample)
     
-    i = 16
+    i = 21
     
     for anchorage_name in anchorage_names:
         data = []
         raw_data = data_generator.read_data(anchorage_name)
         
         for j in range(1):
-            for i in range(11, 16):
+            # for i in range(16, 21):
                 sample = raw_data[str(i)]
                 if 'busy' in anchorage_name:
                     busyStatus = 'busy'
