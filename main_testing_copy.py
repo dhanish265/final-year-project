@@ -59,6 +59,8 @@ class AnchoragePlanner:
         
         # append an empty anchorage to the processing queue at the start 
         self.queue.append((0, QueueNode(self.anchorage)))
+        # print('current utilisation: ', round(self.queue[0][1].total[0]['util'], 2))
+        # print('current number of nodes in frontier: ', len(self.queue))
         pass
         
     def populate_time_list(self, data):
@@ -78,12 +80,14 @@ class AnchoragePlanner:
         currTime = self.time_list[0][0]
         look_up_time = currTime + LOOK_UP_TIME
         leftIndex, rightIndex = 0, 0
+        print('l = ', leftIndex, 'r = ', rightIndex)
         numVessels = 0
         
         while leftIndex < len(self.time_list):
             if leftIndex > rightIndex or (leftIndex == rightIndex and self.time_list[leftIndex][1] == -1):
                 if self.time_list[leftIndex][1] == 1: # new arrival
                     rightIndex = leftIndex
+                    print('l = ', leftIndex, 'r = ', rightIndex)
                     currTime = self.time_list[leftIndex][0]
                     look_up_time = currTime + LOOK_UP_TIME
                     continue
@@ -138,7 +142,7 @@ class AnchoragePlanner:
                 for _ in range(len(self.queue)): # expand all existing queue nodes with incoming vessel
                     #needed even for departure as departure may allow vessels in waiting queue to enter anchorage
                     ogScore, qNode = self.queue.pop(0)
-                    print(len(self.queue))
+                    # print(len(self.queue))
                     anc, total, metrics = qNode.anchorage, qNode.total, qNode.metric_score
                     ancSpots = qNode.anchorSpots
                     
@@ -178,13 +182,15 @@ class AnchoragePlanner:
                         indivScore[4] = 100 # at the moment worst case estimate is that it is unable to anchor inside for the full duration
                         qNode.metric_score = np.add(qNode.metric_score, indivScore)
                         score = calculateScore(qNode.metric_score, numVessels)
+                        # print("Vessel number: ", vesselNumber, ", metrics: ", indivScore)
+                        # print("score: ", round(score, 2))
                         qNode.anchorSpots[vesselNumber] = None
                         self.queue.append((score, qNode))
                         continue
                     
                     temp_queue = []
                     for cornerPoint in cornerPoints:
-                        print(vesselNumber, cornerPoint)
+                        # print(vesselNumber, cornerPoint)
                         NDE, AID, indivScore = self.calcDistanceMetrics(time, vessel, anc, cornerPoint)
                         
                         # 5. minimise time waited/total time
@@ -206,14 +212,19 @@ class AnchoragePlanner:
                         total2 = deepcopy(total)
                         self.amendTotal(time, total2, d = NDE, ra = AID, area = area, t = 0, util = math.pi * vessel2.radius ** 2)
                         score = calculateScore(metric2, numVessels)
+                        # print("Vessel number: ", vesselNumber, ", metrics: ", convert_np_list(indivScore))
+                        # print("score: ", round(score,2))
                         temp_queue.append((score, QueueNode(anc2, total2, metric2, spots2, deepcopy(qNode.waiting))))
+                    # print('new nodes generated: ', len(temp_queue))
                     temp_queue.sort(key = lambda x: x[0])
                     temp_queue = temp_queue[:EXPANSION_SIZE]
+                    # print('adding {} new nodes'.format(len(temp_queue)))
                     # print('temp', temp_queue)
                     self.queue.extend(temp_queue)
                     
                 self.pruneQueue()
                 rightIndex += 1
+                print('l = ', leftIndex, 'r = ', rightIndex)
             
                 
             # maximum look ahead reached
@@ -233,6 +244,7 @@ class AnchoragePlanner:
                 
             # at this point, right index is beyond the current look-up-time and is unseen
             leftIndex += 1
+            print('l = ', leftIndex, 'r = ', rightIndex)
             while leftIndex < rightIndex:
                 if leftIndex >= len(self.time_list): # edge-case where left exceeds length of list
                     break
@@ -249,6 +261,7 @@ class AnchoragePlanner:
                 bestNode = self.queue[0][1]
                 self.cleanUp(bestNode, currIncomingVesselNumber)
                 leftIndex += 1
+                print('l = ', leftIndex, 'r = ', rightIndex)
         
         self.queue.sort(key = lambda x: x[0])
         bestNode = self.queue[0][1]
@@ -281,9 +294,16 @@ class AnchoragePlanner:
             self.pruneQueue()
 
     def pruneQueue(self):
+        # print('current size of frontier: ', len(self.queue))
+        # for node in self.queue:
+        #     print(node[0], node[1].anchorSpots)
+        
         if len(self.queue) > BEAM_LENGTH:
+            # print('pruning according to beam width')
             self.queue.sort(key = lambda x: x[0])
             self.queue = self.queue[:BEAM_LENGTH]
+            # print('size of frontier after pruning: ', len(self.queue))
+        
 
     def handleDepartingAnchoredVessel(self, time, vesselNumber, node, anc):
         vessel2 = [ship for ship in anc.anchored if ship.number == vesselNumber][0]
@@ -404,6 +424,7 @@ class AnchoragePlanner:
                                 
                 # 5. minimise time waited/total time
                 indivScore[4] = (time - waitVessel.arrival)/(waitVessel.departure - waitVessel.arrival) * 100
+                
                                 
                 # 6. maximise, area of largest possible circle that can be inscribed/total area -> minimise 1 - ratio
                 currNodeCopy = deepcopy(currNode)
@@ -413,22 +434,28 @@ class AnchoragePlanner:
                 waitVesselCopy.centre = cornerPoint
                 area = areaMaxInscribedCircle(currNodeCopy.anchorage)
                 indivScore[5] = 100 * (1 - area/currNodeCopy.anchorage.area)
-                                
+                # print('updated score of waiting vessel now able to enter: ', convert_np_list(indivScore))
+                               
                 currNodeCopy.waiting.pop(j)
                 currNodeCopy.metric_score = np.add(currNodeCopy.metric_score, indivScore)
                 new_score = calculateScore(currNodeCopy.metric_score, numVessels)
+                # print("score: ", round(new_score, 2))
                 currNodeCopy.anchorSpots[waitVesselCopy.number] = cornerPoint
                 self.amendTotal(time, currNodeCopy.total, d = NDE, ra = AID, area=area, t = max(0, min(UPPER_LIMIT, time) - max(LOWER_LIMIT, waitVesselCopy.arrival)), util = math.pi * waitVessel.radius ** 2, vessel=waitVesselCopy)
                 temp_list2.append((new_score, currNodeCopy, j))
             
             temp_list2.sort(key=lambda x: x[0])
+            # print('new nodes generated: ', len(temp_list2))
             if len(temp_list2) > EXPANSION_SIZE:
                 temp_list2 = temp_list2[:EXPANSION_SIZE]
+            #     print('selecting and adding {} top nodes'.format(len(temp_list2)))
+            # else:
+            #     print('adding {} new nodes'.format(len(temp_list2)))    
             temp_list.extend(temp_list2)
       
         
     def eliminateInconsistentNodes(self, bestCoordinates):
-        print('elimination reached')
+        # print('elimination reached')
         newQueue = []
         for score, node in self.queue:
             canBeAdded = True
@@ -496,6 +523,7 @@ class AnchoragePlanner:
             entry['area'] = area
         if util is not None:
             entry['util'] += util
+            # print('current utilisation: ', round(entry['util'], 2))
         if d is not None:
             entry['d'][0] += d
             entry['d'][1] += 1
@@ -511,8 +539,8 @@ class AnchoragePlanner:
         total.append(entry)
         
 
-anchorage_names = [ 'Synthetic Anchorage (normal)', 'Synthetic Anchorage (busy)', 'Synthetic Anchorage (idle)']
-# anchorage_names = ['Ahirkapi Anchorage'] , 'Ahirkapi Anchorage'
+# anchorage_names = [ 'Synthetic Anchorage (normal)', 'Synthetic Anchorage (busy)', 'Synthetic Anchorage (idle)', 'Ahirkapi Anchorage']
+anchorage_names = ['Ahirkapi Anchorage'] 
 # anchorage_names = ['Synthetic Anchorage (idle)', 'Ahirkapi Anchorage']   
 def run():
     # anchorage_name = 'Synthetic Anchorage (normal)'
@@ -524,14 +552,14 @@ def run():
     # samples.append([(60, 480, 856), (490, 800, 456), (520, 700, 606), (600, 750, 306)])
     # print(sample)
     
-    i = 30
+    i = 25
     
     for anchorage_name in anchorage_names:
         data = []
         raw_data = data_generator.read_data(anchorage_name)
         
         for j in range(1):
-            for i in range(21, 26):
+            for i in range(1, 26):
                 sample = raw_data[str(i)]
                 if 'busy' in anchorage_name:
                     busyStatus = 'busy'
@@ -548,10 +576,10 @@ def run():
                 anc_planner.populate_time_list(sample)
                 print(i, anc_planner.time_list[0])
                 start_time = tm.ctime(tm.time())
-                # totals, nodeAssignment, plannerAssignment = anc_planner.run_main()
-                totals, nodeAssignment, plannerAssignment = anc_planner.run_alternate(method='NDE', SPSA_weight_setting=j)
-                for total in totals:
-                    print(total)
+                totals, nodeAssignment, plannerAssignment = anc_planner.run_main()
+                # totals, nodeAssignment, plannerAssignment = anc_planner.run_alternate(method='SPSA', SPSA_weight_setting=j)
+                # for total in totals:
+                #     print(total)
                 end_time = tm.ctime(tm.time())
                 print(start_time, end_time)
                 utilavg = obtainAverageArea(totals, area, UPPER_LIMIT, LOWER_LIMIT, param='area')
@@ -564,7 +592,7 @@ def run():
                 # data.append((start_time, end_time))
         write_to_xlsx([data], 'temp_ + ' + anchorage_name + '.xlsx', ['data'])
     
-run()
+# run()
 
 
 

@@ -8,14 +8,14 @@ from polylabel_code import polylabel
 DEPTH = 35
 EXTRA_LENGTH = math.sqrt((25*math.sqrt(DEPTH)) ** 2 - DEPTH**2)
 # EXTRA_LENGTH = 0
-EPSILON = 10 ** (-6)
+EPSILON = 10 ** (-3)
 MIN_IDEAL_DIST = 445
 MAX_IDEAL_DIST = 2055 #2500 - 445
 MAX_WIDTH = 2500
 SPSA_WEIGHTS = [np.array([0.053, 0.325, 0.117, -0.287, 0.087, -0.121, -0.219]), np.array([0.019, 0.525, 0.150, -0.729, -0.559, 0.733, -0.389]), np.array([-0.100, 0.614, -0.020, -0.134, -0.406, -0.274, -0.304]), np.array([-0.066, 0.580, -0.002, -0.372, 0.240, 0.712, -0.882]), np.array([-0.185, 0.155, -0.393, 0.189, -0.219, -0.291, -0.559])]
 BEAM_LENGTH = 5
 EXPANSION_SIZE = 3
-WAIT_TIME_WEIGHT = 0.50
+WAIT_TIME_WEIGHT = 0.60
 WEIGHTS = np.array([(1-WAIT_TIME_WEIGHT)/5] * 6)
 WEIGHTS[4] = WAIT_TIME_WEIGHT
 print(WEIGHTS)
@@ -168,6 +168,8 @@ def calculateIntersectionDistance(vessel, anchoredVessels, x, y, calculateDID = 
             EDID += abs(intersection[1][1] - intersection[0][1])
     return AID, EDID
 
+def convert_np_list(arr):
+    return [round(elem.item(), 2) for elem in arr]
 
 
 
